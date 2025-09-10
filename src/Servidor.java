@@ -31,7 +31,6 @@ public class Servidor {
 
             if ("REGISTRO".equals(comando)) {
                 salida.println("SOLICITAR_DATOS_REGISTRO");
-
                 String usuario = entrada.readLine();
                 String password = entrada.readLine();
 
@@ -44,6 +43,21 @@ public class Servidor {
                         guardarUsuario(usuario, password);
                         salida.println("REGISTRO_EXITOSO");
                         salida.println("MENSAJE_SERVIDOR:Usuario registrado correctamente.");
+                    }
+                }
+            } 
+            else if ("LOGIN".equals(comando)) {
+                salida.println("SOLICITAR_DATOS_LOGIN");
+                String usuario = entrada.readLine();
+                String password = entrada.readLine();
+
+                synchronized (usuarios) {
+                    if (usuarios.containsKey(usuario) && usuarios.get(usuario).equals(password)) {
+                        salida.println("LOGIN_EXITOSO");
+                        System.out.println("Login exitoso: " + usuario);
+                    } else {
+                        salida.println("CREDENCIALES_INVALIDAS");
+                        System.out.println("Login fallido: " + usuario);
                     }
                 }
             }
