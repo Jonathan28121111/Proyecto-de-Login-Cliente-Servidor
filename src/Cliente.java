@@ -14,6 +14,7 @@ public class Cliente {
             System.out.println("2. Iniciar sesión");
             System.out.print("Selecciona una opción: ");
             String opcion = scanner.nextLine();
+            String usuarioActivo = null;
 
             if ("1".equals(opcion)) {
                 salida.println("REGISTRO");
@@ -48,6 +49,25 @@ public class Cliente {
                     String resultado = entrada.readLine();
                     if ("LOGIN_EXITOSO".equals(resultado)) {
                         System.out.println("Login exitoso: " + usuario);
+                        usuarioActivo = usuario;
+
+                        // Menú principal después de login
+                        System.out.println("\n=== Menú Principal ===");
+                        System.out.println("1. Ver perfil");
+                        System.out.println("2. Cerrar sesión");
+                        System.out.print("Selecciona una opción: ");
+                        String opcion2 = scanner.nextLine();
+
+                        if ("1".equals(opcion2)) {
+                            salida.println("VER_PERFIL");
+                            String perfil = entrada.readLine();
+                            System.out.println("Perfil: " + perfil);
+                        } else if ("2".equals(opcion2)) {
+                            salida.println("LOGOUT");
+                            String logout = entrada.readLine();
+                            System.out.println("Logout: " + logout);
+                        }
+
                     } else {
                         System.out.println("Usuario o contraseña incorrectos.");
                     }

@@ -24,6 +24,8 @@ public class Servidor {
     }
 
     private static void manejarCliente(Socket clienteSocket) {
+        String usuarioActivo = null;
+
         try (BufferedReader entrada = new BufferedReader(new InputStreamReader(clienteSocket.getInputStream()));
              PrintWriter salida = new PrintWriter(clienteSocket.getOutputStream(), true)) {
 
@@ -53,6 +55,7 @@ public class Servidor {
 
                 synchronized (usuarios) {
                     if (usuarios.containsKey(usuario) && usuarios.get(usuario).equals(password)) {
+                        usuarioActivo = usuario;
                         salida.println("LOGIN_EXITOSO");
                         System.out.println("Login exitoso: " + usuario);
                     } else {
@@ -60,6 +63,17 @@ public class Servidor {
                         System.out.println("Login fallido: " + usuario);
                     }
                 }
+            } 
+            else if ("VER_PERFIL".equals(comando)) {
+                if (usuarioActivo != null) {
+                    salida.println("PERFIL:" + usuarioActivo);
+                } else {
+                    salida.println("ERROR:NO_AUTENTICADO");
+                }
+            } 
+            else if ("LOGOUT".equals(comando)) {
+                usuarioActivo = null;
+                salida.println("LOGOUT_EXITOSO");
             }
 
             clienteSocket.close();
