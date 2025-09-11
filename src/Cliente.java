@@ -23,89 +23,68 @@ public class Cliente {
 
                 if ("1".equals(opcion)) {
                     salida.println("REGISTRO");
-                    String respuesta = entrada.readLine(); 
+                    String respuesta = entrada.readLine();
                     if ("SOLICITAR_DATOS_REGISTRO".equals(respuesta)) {
                         System.out.print("Nombre de usuario: ");
                         String usuario = scanner.nextLine();
                         System.out.print("Contrasena: ");
                         String password = scanner.nextLine();
-
                         salida.println(usuario);
                         salida.println(password);
-
                         String resultado = entrada.readLine();
                         String mensaje = entrada.readLine();
                         System.out.println("Resultado: " + resultado);
                         System.out.println("Mensaje del servidor: " + mensaje);
-                    } else {
-                        System.out.println("Respuesta inesperada del servidor: " + respuesta);
                     }
 
                 } else if ("2".equals(opcion)) {
                     salida.println("LOGIN");
-                    String respuesta = entrada.readLine(); 
+                    String respuesta = entrada.readLine();
                     if ("SOLICITAR_DATOS_LOGIN".equals(respuesta)) {
                         System.out.print("Nombre de usuario: ");
                         String usuario = scanner.nextLine();
                         System.out.print("Contrasena: ");
                         String password = scanner.nextLine();
-
                         salida.println(usuario);
                         salida.println(password);
-
                         String resultado = entrada.readLine();
                         if ("LOGIN_EXITOSO".equals(resultado)) {
                             usuarioActivo = usuario;
                             System.out.println("Login exitoso: " + usuario);
+
                             boolean enSesion = true;
                             while (enSesion) {
                                 System.out.println("\n=== MENU PRINCIPAL ===");
                                 System.out.println("1. Ver perfil");
                                 System.out.println("2. Ver usuarios registrados");
-                                System.out.println("3. Cerrar sesion");
-                                System.out.println("4. Desconectar");
+                                System.out.println("3. Ver bandeja de entrada");
+                                System.out.println("4. Cerrar sesion");
+                                System.out.println("5. Desconectar");
                                 System.out.print("Opcion: ");
                                 String op = scanner.nextLine();
 
                                 switch (op) {
                                     case "1":
                                         salida.println("VER_PERFIL");
-                                        String resp = entrada.readLine();
-                                        if (resp != null && resp.startsWith("PERFIL:")) {
-                                            System.out.println("Perfil: " + resp.substring("PERFIL:".length()));
-                                        } else {
-                                            System.out.println("Respuesta: " + resp);
-                                        }
+                                        System.out.println("Respuesta: " + entrada.readLine());
                                         break;
                                     case "2":
                                         salida.println("VER_USUARIOS");
-                                        String resp2 = entrada.readLine();
-                                        if (resp2 != null && resp2.startsWith("USUARIOS_REGISTRADOS:")) {
-                                            String lista = resp2.substring("USUARIOS_REGISTRADOS:".length());
-                                            if (lista.isEmpty()) {
-                                                System.out.println("No hay usuarios registrados.");
-                                            } else {
-                                                String[] arr = lista.split(",");
-                                                System.out.println("Usuarios registrados:");
-                                                for (String u : arr) {
-                                                    if (!u.trim().isEmpty()) System.out.println(" - " + u);
-                                                }
-                                            }
-                                        } else {
-                                            System.out.println("Respuesta: " + resp2);
-                                        }
+                                        System.out.println("Respuesta: " + entrada.readLine());
                                         break;
                                     case "3":
+                                        salida.println("BANDEJA");
+                                        System.out.println("Respuesta: " + entrada.readLine());
+                                        break;
+                                    case "4":
                                         salida.println("LOGOUT");
-                                        String logout = entrada.readLine();
-                                        System.out.println("Respuesta: " + logout);
+                                        System.out.println("Respuesta: " + entrada.readLine());
                                         usuarioActivo = null;
                                         enSesion = false;
                                         break;
-                                    case "4":
+                                    case "5":
                                         salida.println("DESCONECTAR");
-                                        String descon = entrada.readLine();
-                                        System.out.println("Respuesta: " + descon);
+                                        System.out.println("Respuesta: " + entrada.readLine());
                                         enSesion = false;
                                         ejecutar = false;
                                         break;
@@ -114,14 +93,11 @@ public class Cliente {
                                 }
                             }
                         } else {
-                            System.out.println("Login fallido: usuario o contrasena incorrectos.");
+                            System.out.println("Login fallido.");
                         }
-                    } else {
-                        System.out.println("Respuesta inesperada del servidor: " + respuesta);
                     }
 
                 } else if ("3".equals(opcion)) {
-                    System.out.println("Saliendo del cliente.");
                     ejecutar = false;
                 } else {
                     System.out.println("Opcion no valida.");

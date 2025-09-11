@@ -4,6 +4,7 @@ import java.util.*;
 
 public class Servidor {
     private static Map<String, String> usuarios = new HashMap<>();
+    private static Map<String, List<String>> bandejas = new HashMap<>();
     private static final String ARCHIVO_USUARIOS = "usuarios.txt";
 
     public static void main(String[] args) {
@@ -11,6 +12,29 @@ public class Servidor {
 
         try (ServerSocket serverSocket = new ServerSocket(12345)) {
             System.out.println("Servidor iniciado en puerto 12345");
+
+            Thread adminThread = new Thread(() -> {
+                Scanner sc = new Scanner(System.in);
+                while (true) {
+                    System.out.println("\n=== Consola del servidor ===");
+                    System.out.print("Escribe destinatario (usuario) o 'salir': ");
+                    String usuario = sc.nextLine().trim();
+                    if (usuario.equalsIgnoreCase("salir")) break;
+
+                    if (!usuarios.containsKey(usuario)) {
+                        System.out.println("Ese usuario no existe.");
+                        continue;
+                    }
+
+                    System.out.print("Escribe el mensaje: ");
+                    String mensaje = sc.nextLine();
+                    enviarMensaje(usuario, "[Servidor]: " + mensaje);
+                    System.out.println("Mensaje enviado a " + usuario);
+                }
+                sc.close();
+            });
+            adminThread.setDaemon(true); 
+            adminThread.start();
 
             while (true) {
                 Socket clienteSocket = serverSocket.accept();
@@ -36,7 +60,10 @@ public class Servidor {
             String linea;
             while ((linea = reader.readLine()) != null) {
                 String[] partes = linea.split(":");
-                if (partes.length == 2) usuarios.put(partes[0], partes[1]);
+                if (partes.length == 2) {
+                    usuarios.put(partes[0], partes[1]);
+                    bandejas.putIfAbsent(partes[0], new ArrayList<>());
+                }
             }
         } catch (IOException e) {
             System.out.println("Error leyendo archivo usuarios: " + e.getMessage());
@@ -51,6 +78,11 @@ public class Servidor {
         }
     }
 
+    private static synchronized void enviarMensaje(String usuario, String mensaje) {
+        bandejas.putIfAbsent(usuario, new ArrayList<>());
+        bandejas.get(usuario).add(mensaje);
+    }
+
     private static class ManejadorCliente implements Runnable {
         private Socket clienteSocket;
         private BufferedReader entrada;
@@ -63,11 +95,11 @@ public class Servidor {
 
         @Override
         public void run() {
-            boolean conexionActiva = true;
             try {
                 entrada = new BufferedReader(new InputStreamReader(clienteSocket.getInputStream()));
                 salida = new PrintWriter(clienteSocket.getOutputStream(), true);
 
+                boolean conexionActiva = true;
                 while (conexionActiva) {
                     String comando = entrada.readLine();
                     if (comando == null) break;
@@ -86,6 +118,9 @@ public class Servidor {
                         case "VER_USUARIOS":
                             manejarVerUsuarios();
                             break;
+                        case "BANDEJA":
+                            manejarBandeja();
+                            break;
                         case "LOGOUT":
                             manejarLogout();
                             break;
@@ -97,7 +132,6 @@ public class Servidor {
                             salida.println("COMANDO_DESCONOCIDO");
                     }
                 }
-
             } catch (IOException e) {
                 System.err.println("Error manejando cliente: " + e.getMessage());
             } finally {
@@ -125,9 +159,11 @@ public class Servidor {
                     salida.println("MENSAJE_SERVIDOR:El usuario ya existe.");
                 } else {
                     usuarios.put(usuario, password);
+                    bandejas.putIfAbsent(usuario, new ArrayList<>());
                     guardarUsuario(usuario, password);
                     salida.println("REGISTRO_EXITOSO");
                     salida.println("MENSAJE_SERVIDOR:Usuario registrado correctamente.");
+                    enviarMensaje(usuario, "Hola " + usuario + ", tu cuenta fue creada.");
                 }
             }
         }
@@ -167,13 +203,23 @@ public class Servidor {
             }
             String lista;
             synchronized (usuarios) {
-                if (usuarios.isEmpty()) {
-                    lista = "";
-                } else {
-                    lista = String.join(",", usuarios.keySet());
-                }
+                lista = String.join(",", usuarios.keySet());
             }
             salida.println("USUARIOS_REGISTRADOS:" + lista);
+        }
+
+        private void manejarBandeja() {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+            List<String> mensajes = bandejas.getOrDefault(usuarioActivo, new ArrayList<>());
+            if (mensajes.isEmpty()) {
+                salida.println("BANDEJA:No tienes mensajes.");
+            } else {
+                salida.println("BANDEJA:" + String.join(" | ", mensajes));
+                mensajes.clear();
+            }
         }
 
         private void manejarLogout() {
