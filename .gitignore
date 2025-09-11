@@ -1,0 +1,11 @@
+
+nbproject/
+build/
+dist/
+*.class
+
+
+*.jar
+
+
+usuarios.txt
