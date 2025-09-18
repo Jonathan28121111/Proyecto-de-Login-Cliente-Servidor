@@ -235,7 +235,7 @@ public class Servidor {
             }
             
             Set<String> usuariosDisponibles = new HashSet<>(usuarios.keySet());
-            usuariosDisponibles.remove(usuarioActivo); // Remover el usuario actual de la lista
+            usuariosDisponibles.remove(usuarioActivo); 
             
             salida.println("USUARIOS:" + String.join(",", usuariosDisponibles)); 
         }
