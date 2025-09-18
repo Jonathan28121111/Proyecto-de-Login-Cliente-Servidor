@@ -19,21 +19,50 @@ public class Servidor {
                 Scanner sc = new Scanner(System.in);
                 while (true) {
                     System.out.println("\n=== Consola del servidor ===");
-                    System.out.print("Escribe destinatario (usuario) o 'salir': ");
-                    String usuario = sc.nextLine().trim();
-                    if (usuario.equalsIgnoreCase("salir")) break;
+                    System.out.println("1. Enviar mensaje a usuario");
+                    System.out.println("2. Expulsar usuario");
+                    System.out.println("3. Ver usuarios registrados");
+                    System.out.println("4. Salir");
+                    System.out.print("Selecciona una opcion: ");
+                    String opcion = sc.nextLine().trim();
 
-                    if (!usuarios.containsKey(usuario)) {
-                        System.out.println("Ese usuario no existe.");
-                        continue;
+                    switch (opcion) {
+                        case "1":
+                            System.out.print("Escribe destinatario (usuario): ");
+                            String usuario = sc.nextLine().trim();
+                            if (!usuarios.containsKey(usuario)) {
+                                System.out.println("Ese usuario no existe.");
+                                continue;
+                            }
+                            System.out.print("Escribe el mensaje: ");
+                            String mensaje = sc.nextLine();
+                            enviarMensaje(usuario, "[Servidor]: " + mensaje);
+                            System.out.println("Mensaje enviado a " + usuario);
+                            break;
+                        
+                        case "2":
+                            System.out.print("Usuario a expulsar: ");
+                            String usuarioExpulsar = sc.nextLine().trim();
+                            if (expulsarUsuario(usuarioExpulsar)) {
+                                System.out.println("Usuario " + usuarioExpulsar + " expulsado exitosamente.");
+                            } else {
+                                System.out.println("Usuario no encontrado o error al expulsar.");
+                            }
+                            break;
+                        
+                        case "3":
+                            System.out.println("Usuarios registrados: " + usuarios.keySet());
+                            break;
+                        
+                        case "4":
+                            System.out.println("Cerrando servidor...");
+                            System.exit(0);
+                            break;
+                        
+                        default:
+                            System.out.println("Opcion no valida.");
                     }
-
-                    System.out.print("Escribe el mensaje: ");
-                    String mensaje = sc.nextLine();
-                    enviarMensaje(usuario, "[Servidor]: " + mensaje);
-                    System.out.println("Mensaje enviado a " + usuario);
                 }
-                sc.close();
             });
             adminThread.setDaemon(true);
             adminThread.start();
@@ -76,6 +105,27 @@ public class Servidor {
         }
     }
 
+    private static void reescribirArchivoUsuarios() {
+        try (FileWriter writer = new FileWriter(ARCHIVO_USUARIOS, false)) {
+            for (Map.Entry<String, String> entry : usuarios.entrySet()) {
+                writer.write(entry.getKey() + ":" + entry.getValue() + "\n");
+            }
+        } catch (IOException e) {
+            System.err.println("Error reescribiendo archivo usuarios: " + e.getMessage());
+        }
+    }
+
+    private static synchronized boolean expulsarUsuario(String usuario) {
+        if (usuarios.containsKey(usuario)) {
+            usuarios.remove(usuario);
+            bandejas.remove(usuario);
+            reescribirArchivoUsuarios();
+            System.out.println("Usuario " + usuario + " ha sido expulsado del sistema.");
+            return true;
+        }
+        return false;
+    }
+
     private static synchronized void enviarMensaje(String usuario, String mensaje) {
         bandejas.putIfAbsent(usuario, new ArrayList<>());
         bandejas.get(usuario).add(mensaje);
@@ -110,6 +160,8 @@ public class Servidor {
                         case "VER_PERFIL": manejarVerPerfil(); break;
                         case "VER_USUARIOS": manejarVerUsuarios(); break;
                         case "BANDEJA": manejarBandeja(); break;
+                        case "ELIMINAR_MENSAJES": manejarEliminarMensajes(); break;
+                        case "ENVIAR_MENSAJE": manejarEnviarMensaje(); break;
                         case "LOGOUT": manejarLogout(); break;
                         case "ADIVINA_NUMERO": jugarAdivinaNumero(); break;
                         case "DESCONECTAR":
@@ -172,15 +224,113 @@ public class Servidor {
             }
         }
 
-        private void manejarVerPerfil() { salida.println(usuarioActivo != null ? "PERFIL:" + usuarioActivo : "ERROR:NO_AUTENTICADO"); }
-        private void manejarVerUsuarios() { salida.println(usuarioActivo != null ? "USUARIOS:" + String.join(",", usuarios.keySet()) : "ERROR:NO_AUTENTICADO"); }
-        private void manejarBandeja() {
-            if (usuarioActivo == null) { salida.println("ERROR:NO_AUTENTICADO"); return; }
-            List<String> mensajes = bandejas.getOrDefault(usuarioActivo, new ArrayList<>());
-            if (mensajes.isEmpty()) salida.println("BANDEJA:No tienes mensajes.");
-            else { salida.println("BANDEJA:" + String.join(" | ", mensajes)); mensajes.clear(); }
+        private void manejarVerPerfil() { 
+            salida.println(usuarioActivo != null ? "PERFIL:" + usuarioActivo : "ERROR:NO_AUTENTICADO"); 
         }
-        private void manejarLogout() { usuarioActivo = null; salida.println("LOGOUT_EXITOSO"); }
+        
+        private void manejarVerUsuarios() { 
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+            
+            Set<String> usuariosDisponibles = new HashSet<>(usuarios.keySet());
+            usuariosDisponibles.remove(usuarioActivo); // Remover el usuario actual de la lista
+            
+            salida.println("USUARIOS:" + String.join(",", usuariosDisponibles)); 
+        }
+
+        private void manejarBandeja() throws IOException {
+            if (usuarioActivo == null) { 
+                salida.println("ERROR:NO_AUTENTICADO"); 
+                return; 
+            }
+            
+            List<String> mensajes = bandejas.getOrDefault(usuarioActivo, new ArrayList<>());
+            if (mensajes.isEmpty()) {
+                salida.println("BANDEJA:No tienes mensajes.");
+            } else {
+                salida.println("BANDEJA_CON_INDICES");
+                for (int i = 0; i < mensajes.size(); i++) {
+                    salida.println((i + 1) + ". " + mensajes.get(i));
+                }
+                salida.println("FIN_BANDEJA");
+            }
+        }
+
+        private void manejarEliminarMensajes() throws IOException {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+
+            List<String> mensajes = bandejas.getOrDefault(usuarioActivo, new ArrayList<>());
+            if (mensajes.isEmpty()) {
+                salida.println("NO_HAY_MENSAJES");
+                return;
+            }
+
+            salida.println("SOLICITAR_MENSAJE_ELIMINAR");
+            String respuesta = entrada.readLine();
+
+            if ("TODOS".equalsIgnoreCase(respuesta)) {
+                mensajes.clear();
+                salida.println("TODOS_ELIMINADOS");
+            } else {
+                try {
+                    int indice = Integer.parseInt(respuesta) - 1;
+                    if (indice >= 0 && indice < mensajes.size()) {
+                        mensajes.remove(indice);
+                        salida.println("MENSAJE_ELIMINADO");
+                    } else {
+                        salida.println("INDICE_INVALIDO");
+                    }
+                } catch (NumberFormatException e) {
+                    salida.println("FORMATO_INVALIDO");
+                }
+            }
+        }
+
+        private void manejarEnviarMensaje() throws IOException {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+
+            salida.println("SOLICITAR_DESTINATARIO");
+            String destinatario = entrada.readLine();
+
+            if (destinatario == null || destinatario.trim().isEmpty()) {
+                salida.println("DESTINATARIO_INVALIDO");
+                return;
+            }
+
+            if (destinatario.equals(usuarioActivo)) {
+                salida.println("NO_PUEDES_ENVIARTE_MENSAJE");
+                return;
+            }
+
+            if (!usuarios.containsKey(destinatario)) {
+                salida.println("DESTINATARIO_NO_EXISTE");
+                return;
+            }
+
+            salida.println("SOLICITAR_MENSAJE");
+            String mensaje = entrada.readLine();
+
+            if (mensaje == null || mensaje.trim().isEmpty()) {
+                salida.println("MENSAJE_VACIO");
+                return;
+            }
+
+            enviarMensaje(destinatario, "[De: " + usuarioActivo + "]: " + mensaje);
+            salida.println("MENSAJE_ENVIADO");
+        }
+
+        private void manejarLogout() { 
+            usuarioActivo = null; 
+            salida.println("LOGOUT_EXITOSO"); 
+        }
 
         private void jugarAdivinaNumero() throws IOException {
             if (usuarioActivo == null) {
