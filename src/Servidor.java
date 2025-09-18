@@ -7,10 +7,12 @@ public class Servidor {
     private static Map<String, String> usuarios = new ConcurrentHashMap<>();
     private static Map<String, List<String>> bandejas = new ConcurrentHashMap<>();
     private static final String ARCHIVO_USUARIOS = "usuarios.txt";
+    private static final String DIRECTORIO_MENSAJES = "mensajes/";
     private static final int PUERTO = 12345;
 
     public static void main(String[] args) {
         cargarUsuarios();
+        crearDirectorioMensajes();
 
         try (ServerSocket serverSocket = new ServerSocket(PUERTO)) {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
@@ -90,10 +92,55 @@ public class Servidor {
                 if (partes.length == 2) {
                     usuarios.put(partes[0], partes[1]);
                     bandejas.putIfAbsent(partes[0], new ArrayList<>());
+                    cargarMensajesUsuario(partes[0]);
                 }
             }
         } catch (IOException e) {
             System.out.println("Error leyendo archivo usuarios: " + e.getMessage());
+        }
+    }
+
+    private static void crearDirectorioMensajes() {
+        File dir = new File(DIRECTORIO_MENSAJES);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+    }
+
+    private static void cargarMensajesUsuario(String usuario) {
+        File archivoMensajes = new File(DIRECTORIO_MENSAJES + usuario + ".txt");
+        if (!archivoMensajes.exists()) {
+            return;
+        }
+
+        List<String> mensajes = bandejas.get(usuario);
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivoMensajes))) {
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                mensajes.add(linea);
+            }
+        } catch (IOException e) {
+            System.err.println("Error cargando mensajes para " + usuario + ": " + e.getMessage());
+        }
+    }
+
+    private static void guardarMensajesUsuario(String usuario) {
+        File archivoMensajes = new File(DIRECTORIO_MENSAJES + usuario + ".txt");
+        List<String> mensajes = bandejas.get(usuario);
+
+        if (mensajes == null || mensajes.isEmpty()) {
+            if (archivoMensajes.exists()) {
+                archivoMensajes.delete();
+            }
+            return;
+        }
+
+        try (FileWriter writer = new FileWriter(archivoMensajes, false)) {
+            for (String mensaje : mensajes) {
+                writer.write(mensaje + "\n");
+            }
+        } catch (IOException e) {
+            System.err.println("Error guardando mensajes para " + usuario + ": " + e.getMessage());
         }
     }
 
@@ -119,6 +166,12 @@ public class Servidor {
         if (usuarios.containsKey(usuario)) {
             usuarios.remove(usuario);
             bandejas.remove(usuario);
+            
+            File archivoMensajes = new File(DIRECTORIO_MENSAJES + usuario + ".txt");
+            if (archivoMensajes.exists()) {
+                archivoMensajes.delete();
+            }
+            
             reescribirArchivoUsuarios();
             System.out.println("Usuario " + usuario + " ha sido expulsado del sistema.");
             return true;
@@ -129,6 +182,7 @@ public class Servidor {
     private static synchronized void enviarMensaje(String usuario, String mensaje) {
         bandejas.putIfAbsent(usuario, new ArrayList<>());
         bandejas.get(usuario).add(mensaje);
+        guardarMensajesUsuario(usuario); 
     }
 
     private static class ManejadorCliente implements Runnable {
@@ -197,6 +251,7 @@ public class Servidor {
                     usuarios.put(usuario, password);
                     bandejas.putIfAbsent(usuario, new ArrayList<>());
                     guardarUsuario(usuario, password);
+                    cargarMensajesUsuario(usuario); 
                     salida.println("REGISTRO_EXITOSO");
                     salida.println("MENSAJE_SERVIDOR:Usuario registrado correctamente.");
                     enviarMensaje(usuario, "Hola " + usuario + ", tu cuenta fue creada.");
@@ -275,12 +330,14 @@ public class Servidor {
 
             if ("TODOS".equalsIgnoreCase(respuesta)) {
                 mensajes.clear();
+                guardarMensajesUsuario(usuarioActivo); 
                 salida.println("TODOS_ELIMINADOS");
             } else {
                 try {
                     int indice = Integer.parseInt(respuesta) - 1;
                     if (indice >= 0 && indice < mensajes.size()) {
                         mensajes.remove(indice);
+                        guardarMensajesUsuario(usuarioActivo); 
                         salida.println("MENSAJE_ELIMINADO");
                     } else {
                         salida.println("INDICE_INVALIDO");
