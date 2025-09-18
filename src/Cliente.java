@@ -56,9 +56,11 @@ public class Cliente {
                                     System.out.println("1. Ver perfil");
                                     System.out.println("2. Ver usuarios registrados");
                                     System.out.println("3. Ver bandeja de entrada");
-                                    System.out.println("4. Cerrar sesion");
-                                    System.out.println("5. Desconectar");
+                                    System.out.println("4. Eliminar mensajes");
+                                    System.out.println("5. Enviar mensaje a usuario");
                                     System.out.println("6. Jugar Adivina el Numero");
+                                    System.out.println("7. Cerrar sesion");
+                                    System.out.println("8. Desconectar");
                                     System.out.print("Opcion: ");
                                     String op = scanner.nextLine();
 
@@ -69,26 +71,41 @@ public class Cliente {
                                             break;
                                         case "2":
                                             salida.println("VER_USUARIOS");
-                                            System.out.println(entrada.readLine());
+                                            String usuarios = entrada.readLine();
+                                            if (usuarios.startsWith("USUARIOS:")) {
+                                                String listaUsuarios = usuarios.substring(9);
+                                                if (listaUsuarios.isEmpty()) {
+                                                    System.out.println("No hay otros usuarios registrados.");
+                                                } else {
+                                                    System.out.println("Usuarios disponibles: " + listaUsuarios);
+                                                }
+                                            } else {
+                                                System.out.println(usuarios);
+                                            }
                                             break;
                                         case "3":
-                                            salida.println("BANDEJA");
-                                            System.out.println(entrada.readLine());
+                                            manejarBandeja(salida, entrada);
                                             break;
                                         case "4":
+                                            eliminarMensajes(salida, entrada);
+                                            break;
+                                        case "5":
+                                            enviarMensajeUsuario(salida, entrada);
+                                            break;
+                                        case "6":
+                                            jugarAdivinaNumero(salida, entrada);
+                                            break;
+                                        case "7":
                                             salida.println("LOGOUT");
                                             System.out.println(entrada.readLine());
                                             usuarioActivo = null;
                                             enSesion = false;
                                             break;
-                                        case "5":
+                                        case "8":
                                             salida.println("DESCONECTAR");
                                             System.out.println(entrada.readLine());
                                             enSesion = false;
                                             ejecutar = false;
-                                            break;
-                                        case "6":
-                                            jugarAdivinaNumero(salida, entrada);
                                             break;
                                         default:
                                             System.out.println("Opcion no valida");
@@ -113,6 +130,115 @@ public class Cliente {
             System.err.println("Error conexion: " + e.getMessage());
         } finally {
             scanner.close();
+        }
+    }
+
+    private static void manejarBandeja(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("BANDEJA");
+            String respuesta = entrada.readLine();
+            
+            if ("BANDEJA_CON_INDICES".equals(respuesta)) {
+                System.out.println("\n=== BANDEJA DE ENTRADA ===");
+                String linea;
+                while (!(linea = entrada.readLine()).equals("FIN_BANDEJA")) {
+                    System.out.println(linea);
+                }
+                System.out.println("===========================");
+            } else {
+                System.out.println(respuesta.substring(8)); 
+            }
+        } catch (IOException e) {
+            System.out.println("Error al obtener la bandeja: " + e.getMessage());
+        }
+    }
+
+    private static void eliminarMensajes(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("ELIMINAR_MENSAJES");
+            String respuesta = entrada.readLine();
+
+            switch (respuesta) {
+                case "ERROR:NO_AUTENTICADO":
+                    System.out.println("Debes estar autenticado.");
+                    break;
+                case "NO_HAY_MENSAJES":
+                    System.out.println("No tienes mensajes para eliminar.");
+                    break;
+                case "SOLICITAR_MENSAJE_ELIMINAR":
+                    System.out.println("\n=== ELIMINAR MENSAJES ===");
+                    System.out.println("Ingresa el numero del mensaje a eliminar (o 'todos' para eliminar todos):");
+                    String opcion = scanner.nextLine();
+                    salida.println(opcion);
+                    
+                    String resultado = entrada.readLine();
+                    switch (resultado) {
+                        case "TODOS_ELIMINADOS":
+                            System.out.println("Todos los mensajes han sido eliminados.");
+                            break;
+                        case "MENSAJE_ELIMINADO":
+                            System.out.println("Mensaje eliminado correctamente.");
+                            break;
+                        case "INDICE_INVALIDO":
+                            System.out.println("Numero de mensaje invalido.");
+                            break;
+                        case "FORMATO_INVALIDO":
+                            System.out.println("Formato invalido. Usa un numero o 'todos'.");
+                            break;
+                    }
+                    break;
+            }
+        } catch (IOException e) {
+            System.out.println("Error al eliminar mensajes: " + e.getMessage());
+        }
+    }
+
+    private static void enviarMensajeUsuario(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("ENVIAR_MENSAJE");
+            String respuesta = entrada.readLine();
+
+            if ("ERROR:NO_AUTENTICADO".equals(respuesta)) {
+                System.out.println("Debes estar autenticado.");
+                return;
+            }
+
+            if ("SOLICITAR_DESTINATARIO".equals(respuesta)) {
+                System.out.println("\n=== ENVIAR MENSAJE ===");
+                System.out.print("Destinatario: ");
+                String destinatario = scanner.nextLine();
+                salida.println(destinatario);
+
+                String estadoDestinatario = entrada.readLine();
+                switch (estadoDestinatario) {
+                    case "DESTINATARIO_INVALIDO":
+                        System.out.println("Destinatario invalido.");
+                        return;
+                    case "NO_PUEDES_ENVIARTE_MENSAJE":
+                        System.out.println("No puedes enviarte un mensaje a ti mismo.");
+                        return;
+                    case "DESTINATARIO_NO_EXISTE":
+                        System.out.println("El destinatario no existe.");
+                        return;
+                    case "SOLICITAR_MENSAJE":
+                        System.out.print("Mensaje: ");
+                        String mensaje = scanner.nextLine();
+                        salida.println(mensaje);
+
+                        String estadoMensaje = entrada.readLine();
+                        switch (estadoMensaje) {
+                            case "MENSAJE_VACIO":
+                                System.out.println("No puedes enviar un mensaje vacio.");
+                                break;
+                            case "MENSAJE_ENVIADO":
+                                System.out.println("Mensaje enviado correctamente a " + destinatario);
+                                break;
+                        }
+                        break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error al enviar mensaje: " + e.getMessage());
         }
     }
 
