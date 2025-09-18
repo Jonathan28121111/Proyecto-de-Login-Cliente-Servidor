@@ -1,0 +1,3 @@
+[De: Jonathan]: que haces?
+[De: Jonathan]: viniste a la escuela?'
+[Servidor]: mensaje de prueba de servidor
