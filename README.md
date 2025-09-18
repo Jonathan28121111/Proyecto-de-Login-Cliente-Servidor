@@ -5,4 +5,4 @@ donde los clientes pueden participar enviando sus intentos y recibiendo retroali
 El código fuente incluye las clases principales para la comunicación entre cliente y servidor, manejo de usuarios y lógica del juego. 
 El archivo `usuarios.txt` almacena los usuarios registrados.
 
-Rama principal: `master`
+Rama principal: `main`
