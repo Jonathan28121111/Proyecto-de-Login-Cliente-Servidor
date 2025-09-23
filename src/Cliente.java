@@ -38,7 +38,9 @@ public class Cliente {
 
                     case "2":
                         salida.println("LOGIN");
-                        if ("SOLICITAR_DATOS_LOGIN".equals(entrada.readLine())) {
+                        String respuestaLogin = entrada.readLine();
+                        
+                        if ("SOLICITAR_DATOS_LOGIN".equals(respuestaLogin)) {
                             System.out.print("Nombre de usuario: ");
                             String usuario = scanner.nextLine();
                             System.out.print("Contrasena: ");
@@ -46,7 +48,8 @@ public class Cliente {
                             salida.println(usuario);
                             salida.println(password);
 
-                            if ("LOGIN_EXITOSO".equals(entrada.readLine())) {
+                            String resultadoLogin = entrada.readLine();
+                            if ("LOGIN_EXITOSO".equals(resultadoLogin)) {
                                 usuarioActivo = usuario;
                                 System.out.println("Login exitoso: " + usuario);
                                 boolean enSesion = true;
@@ -59,8 +62,11 @@ public class Cliente {
                                     System.out.println("4. Eliminar mensajes");
                                     System.out.println("5. Enviar mensaje a usuario");
                                     System.out.println("6. Jugar Adivina el Numero");
-                                    System.out.println("7. Cerrar sesion");
-                                    System.out.println("8. Desconectar");
+                                    System.out.println("7. Bloquear usuario");
+                                    System.out.println("8. Desbloquear usuario");
+                                    System.out.println("9. Ver usuarios bloqueados");
+                                    System.out.println("10. Cerrar sesion");
+                                    System.out.println("11. Desconectar");
                                     System.out.print("Opcion: ");
                                     String op = scanner.nextLine();
 
@@ -96,12 +102,21 @@ public class Cliente {
                                             jugarAdivinaNumero(salida, entrada);
                                             break;
                                         case "7":
+                                            bloquearUsuario(salida, entrada);
+                                            break;
+                                        case "8":
+                                            desbloquearUsuario(salida, entrada);
+                                            break;
+                                        case "9":
+                                            verUsuariosBloqueados(salida, entrada);
+                                            break;
+                                        case "10":
                                             salida.println("LOGOUT");
                                             System.out.println(entrada.readLine());
                                             usuarioActivo = null;
                                             enSesion = false;
                                             break;
-                                        case "8":
+                                        case "11":
                                             salida.println("DESCONECTAR");
                                             System.out.println(entrada.readLine());
                                             enSesion = false;
@@ -111,6 +126,8 @@ public class Cliente {
                                             System.out.println("Opcion no valida");
                                     }
                                 }
+                            } else if ("USUARIO_BLOQUEADO".equals(resultadoLogin)) {
+                                System.out.println("Tu cuenta ha sido bloqueada. No puedes iniciar sesion.");
                             } else {
                                 System.out.println("Login fallido.");
                             }
@@ -220,6 +237,12 @@ public class Cliente {
                     case "DESTINATARIO_NO_EXISTE":
                         System.out.println("El destinatario no existe.");
                         return;
+                    case "USUARIO_BLOQUEADO":
+                        System.out.println("Has bloqueado a este usuario. No puedes enviarle mensajes.");
+                        return;
+                    case "USUARIO_TE_BLOQUEO":
+                        System.out.println("Este usuario te ha bloqueado. No puedes enviarle mensajes.");
+                        return;
                     case "SOLICITAR_MENSAJE":
                         System.out.print("Mensaje: ");
                         String mensaje = scanner.nextLine();
@@ -239,6 +262,97 @@ public class Cliente {
             }
         } catch (IOException e) {
             System.out.println("Error al enviar mensaje: " + e.getMessage());
+        }
+    }
+
+    private static void bloquearUsuario(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("BLOQUEAR_USUARIO");
+            String respuesta = entrada.readLine();
+
+            if ("ERROR:NO_AUTENTICADO".equals(respuesta)) {
+                System.out.println("Debes estar autenticado.");
+                return;
+            }
+
+            if ("SOLICITAR_USUARIO_BLOQUEAR".equals(respuesta)) {
+                System.out.println("\n=== BLOQUEAR USUARIO ===");
+                System.out.print("Usuario a bloquear: ");
+                String usuarioBloquear = scanner.nextLine();
+                salida.println(usuarioBloquear);
+
+                String resultado = entrada.readLine();
+                switch (resultado) {
+                    case "USUARIO_BLOQUEADO_EXITOSO":
+                        System.out.println("Usuario bloqueado correctamente.");
+                        break;
+                    case "USUARIO_NO_EXISTE":
+                        System.out.println("El usuario no existe.");
+                        break;
+                    case "NO_PUEDES_BLOQUEARTE":
+                        System.out.println("No puedes bloquearte a ti mismo.");
+                        break;
+                    case "USUARIO_YA_BLOQUEADO":
+                        System.out.println("Ya has bloqueado a este usuario.");
+                        break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error al bloquear usuario: " + e.getMessage());
+        }
+    }
+
+    private static void desbloquearUsuario(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("DESBLOQUEAR_USUARIO");
+            String respuesta = entrada.readLine();
+
+            if ("ERROR:NO_AUTENTICADO".equals(respuesta)) {
+                System.out.println("Debes estar autenticado.");
+                return;
+            }
+
+            if ("SOLICITAR_USUARIO_DESBLOQUEAR".equals(respuesta)) {
+                System.out.println("\n=== DESBLOQUEAR USUARIO ===");
+                System.out.print("Usuario a desbloquear: ");
+                String usuarioDesbloquear = scanner.nextLine();
+                salida.println(usuarioDesbloquear);
+
+                String resultado = entrada.readLine();
+                switch (resultado) {
+                    case "USUARIO_DESBLOQUEADO_EXITOSO":
+                        System.out.println("Usuario desbloqueado correctamente.");
+                        break;
+                    case "USUARIO_NO_BLOQUEADO":
+                        System.out.println("No has bloqueado a este usuario.");
+                        break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error al desbloquear usuario: " + e.getMessage());
+        }
+    }
+
+    private static void verUsuariosBloqueados(PrintWriter salida, BufferedReader entrada) {
+        try {
+            salida.println("VER_BLOQUEADOS");
+            String respuesta = entrada.readLine();
+
+            if ("ERROR:NO_AUTENTICADO".equals(respuesta)) {
+                System.out.println("Debes estar autenticado.");
+                return;
+            }
+
+            if (respuesta.startsWith("BLOQUEADOS:")) {
+                String usuariosBloqueados = respuesta.substring(11);
+                if (usuariosBloqueados.isEmpty()) {
+                    System.out.println("No has bloqueado a ningun usuario.");
+                } else {
+                    System.out.println("Usuarios bloqueados: " + usuariosBloqueados);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error al obtener usuarios bloqueados: " + e.getMessage());
         }
     }
 
