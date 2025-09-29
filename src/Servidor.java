@@ -16,18 +16,19 @@ public class Servidor {
     private static final String DIRECTORIO_MENSAJES = "mensajes/";
     private static final String DIRECTORIO_ARCHIVOS = "archivos_compartidos/";
     private static final int PUERTO = 12345;
+    private static Map<String, Integer> paginaActual = new ConcurrentHashMap<>();
 
     public static class ArchivoTransferencia {
         public String nombre;
         public String remitente;
         public byte[] contenido;
-        public long tamaño;
-        
+        public long tamano;
+
         public ArchivoTransferencia(String nombre, String remitente, byte[] contenido) {
             this.nombre = nombre;
             this.remitente = remitente;
             this.contenido = contenido;
-            this.tamaño = contenido.length;
+            this.tamano = contenido.length;
         }
     }
 
@@ -69,7 +70,7 @@ public class Servidor {
                             enviarMensaje(usuario, "[Servidor]: " + mensaje);
                             System.out.println("Mensaje enviado a " + usuario);
                             break;
-                        
+
                         case "2":
                             System.out.print("Usuario a expulsar: ");
                             String usuarioExpulsar = sc.nextLine().trim();
@@ -79,11 +80,11 @@ public class Servidor {
                                 System.out.println("Usuario no encontrado o error al expulsar.");
                             }
                             break;
-                        
+
                         case "3":
                             System.out.println("Usuarios registrados: " + usuarios.keySet());
                             break;
-                        
+
                         case "4":
                             System.out.print("Usuario a bloquear globalmente: ");
                             String usuarioBloquearGlobal = sc.nextLine().trim();
@@ -99,7 +100,7 @@ public class Servidor {
                                 System.out.println("Usuario " + usuarioBloquearGlobal + " bloqueado globalmente.");
                             }
                             break;
-                        
+
                         case "5":
                             System.out.print("Usuario a desbloquear globalmente: ");
                             String usuarioDesbloquearGlobal = sc.nextLine().trim();
@@ -110,27 +111,27 @@ public class Servidor {
                                 System.out.println("El usuario no estaba bloqueado globalmente.");
                             }
                             break;
-                        
+
                         case "6":
                             System.out.println("Usuarios bloqueados globalmente: " + usuariosBloqueadosGlobal);
                             break;
-                            
+
                         case "7":
                             System.out.println("=== Archivos compartidos ===");
                             for (Map.Entry<String, List<ArchivoTransferencia>> entry : archivosCompartidos.entrySet()) {
                                 System.out.println("Usuario: " + entry.getKey());
                                 for (ArchivoTransferencia archivo : entry.getValue()) {
-                                    System.out.println("  - " + archivo.nombre + " (de: " + archivo.remitente + 
-                                                     ", tamaño: " + archivo.tamaño + " bytes)");
+                                    System.out.println("  - " + archivo.nombre + " (de: " + archivo.remitente +
+                                            ", tamaño: " + archivo.tamano + " bytes)");
                                 }
                             }
                             break;
-                        
+
                         case "8":
                             System.out.println("Cerrando servidor...");
                             System.exit(0);
                             break;
-                        
+
                         default:
                             System.out.println("Opcion no valida.");
                     }
@@ -152,7 +153,11 @@ public class Servidor {
     private static void cargarUsuarios() {
         File f = new File(ARCHIVO_USUARIOS);
         if (!f.exists()) {
-            try { f.createNewFile(); } catch (IOException e) { System.err.println("Error creando archivo usuarios: " + e.getMessage()); }
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                System.err.println("Error creando archivo usuarios: " + e.getMessage());
+            }
             return;
         }
         try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
@@ -175,7 +180,11 @@ public class Servidor {
     private static void cargarBloqueados() {
         File f = new File(ARCHIVO_BLOQUEADOS);
         if (!f.exists()) {
-            try { f.createNewFile(); } catch (IOException e) { System.err.println("Error creando archivo bloqueados: " + e.getMessage()); }
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                System.err.println("Error creando archivo bloqueados: " + e.getMessage());
+            }
             return;
         }
         try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
@@ -200,7 +209,11 @@ public class Servidor {
     private static void cargarBloqueadosGlobal() {
         File f = new File(ARCHIVO_BLOQUEADOS_GLOBAL);
         if (!f.exists()) {
-            try { f.createNewFile(); } catch (IOException e) { System.err.println("Error creando archivo bloqueados global: " + e.getMessage()); }
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                System.err.println("Error creando archivo bloqueados global: " + e.getMessage());
+            }
             return;
         }
         try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
@@ -313,21 +326,21 @@ public class Servidor {
             usuariosBloqueados.remove(usuario);
             usuariosBloqueadosGlobal.remove(usuario);
             archivosCompartidos.remove(usuario);
-            
+
             File archivoMensajes = new File(DIRECTORIO_MENSAJES + usuario + ".txt");
             if (archivoMensajes.exists()) {
                 archivoMensajes.delete();
             }
-            
+
             reescribirArchivoUsuarios();
             guardarBloqueados();
             guardarBloqueadosGlobal();
-            
+
             for (Set<String> bloqueados : usuariosBloqueados.values()) {
                 bloqueados.remove(usuario);
             }
             guardarBloqueados();
-            
+
             System.out.println("Usuario " + usuario + " ha sido expulsado del sistema.");
             return true;
         }
@@ -337,7 +350,7 @@ public class Servidor {
     private static synchronized void enviarMensaje(String usuario, String mensaje) {
         bandejas.putIfAbsent(usuario, new ArrayList<>());
         bandejas.get(usuario).add(mensaje);
-        guardarMensajesUsuario(usuario); 
+        guardarMensajesUsuario(usuario);
     }
 
     private static synchronized void enviarArchivo(String usuario, ArchivoTransferencia archivo) {
@@ -373,22 +386,63 @@ public class Servidor {
                     comando = comando.trim().toUpperCase();
 
                     switch (comando) {
-                        case "REGISTRO": manejarRegistro(); break;
-                        case "LOGIN": manejarLogin(); break;
-                        case "VER_PERFIL": manejarVerPerfil(); break;
-                        case "VER_USUARIOS": manejarVerUsuarios(); break;
-                        case "BANDEJA": manejarBandeja(); break;
-                        case "ELIMINAR_MENSAJES": manejarEliminarMensajes(); break;
-                        case "ENVIAR_MENSAJE": manejarEnviarMensaje(); break;
-                        case "BLOQUEAR_USUARIO": manejarBloquearUsuario(); break;
-                        case "DESBLOQUEAR_USUARIO": manejarDesbloquearUsuario(); break;
-                        case "VER_BLOQUEADOS": manejarVerBloqueados(); break;
-                        case "LISTAR_ARCHIVOS": manejarListarArchivos(); break;
-                        case "ENVIAR_ARCHIVO": manejarEnviarArchivo(); break;
-                        case "VER_ARCHIVOS_RECIBIDOS": manejarVerArchivosRecibidos(); break;
-                        case "DESCARGAR_ARCHIVO": manejarDescargarArchivo(); break;
-                        case "LOGOUT": manejarLogout(); break;
-                        case "ADIVINA_NUMERO": jugarAdivinaNumero(); break;
+                        case "REGISTRO":
+                            manejarRegistro();
+                            break;
+                        case "LOGIN":
+                            manejarLogin();
+                            break;
+                        case "VER_PERFIL":
+                            manejarVerPerfil();
+                            break;
+                        case "VER_USUARIOS":
+                            manejarVerUsuarios();
+                            break;
+                        case "BANDEJA":
+                            manejarBandeja();
+                            break;
+                        case "SIGUIENTE":
+                            manejarSiguiente();
+                            break;
+                        case "ANTERIOR":
+                            manejarAnterior();
+                            break;
+                        case "SALIR_BANDEJA":
+                            manejarSalirBandeja();
+                            break;
+                        case "ELIMINAR_MENSAJES":
+                            manejarEliminarMensajes();
+                            break;
+                        case "ENVIAR_MENSAJE":
+                            manejarEnviarMensaje();
+                            break;
+                        case "BLOQUEAR_USUARIO":
+                            manejarBloquearUsuario();
+                            break;
+                        case "DESBLOQUEAR_USUARIO":
+                            manejarDesbloquearUsuario();
+                            break;
+                        case "VER_BLOQUEADOS":
+                            manejarVerBloqueados();
+                            break;
+                        case "LISTAR_ARCHIVOS":
+                            manejarListarArchivos();
+                            break;
+                        case "ENVIAR_ARCHIVO":
+                            manejarEnviarArchivo();
+                            break;
+                        case "VER_ARCHIVOS_RECIBIDOS":
+                            manejarVerArchivosRecibidos();
+                            break;
+                        case "DESCARGAR_ARCHIVO":
+                            manejarDescargarArchivo();
+                            break;
+                        case "LOGOUT":
+                            manejarLogout();
+                            break;
+                        case "ADIVINA_NUMERO":
+                            jugarAdivinaNumero();
+                            break;
                         case "DESCONECTAR":
                             salida.println("DESCONEXION_EXITOSA");
                             conexionActiva = false;
@@ -400,7 +454,11 @@ public class Servidor {
             } catch (IOException e) {
                 System.err.println("Error manejando cliente: " + e.getMessage());
             } finally {
-                try { if (clienteSocket != null) clienteSocket.close(); } catch (IOException e) { System.err.println("Error cerrando cliente: " + e.getMessage()); }
+                try {
+                    if (clienteSocket != null) clienteSocket.close();
+                } catch (IOException e) {
+                    System.err.println("Error cerrando cliente: " + e.getMessage());
+                }
             }
         }
 
@@ -424,7 +482,7 @@ public class Servidor {
                     usuariosBloqueados.putIfAbsent(usuario, new HashSet<>());
                     archivosCompartidos.putIfAbsent(usuario, new ArrayList<>());
                     guardarUsuario(usuario, password);
-                    cargarMensajesUsuario(usuario); 
+                    cargarMensajesUsuario(usuario);
                     salida.println("REGISTRO_EXITOSO");
                     salida.println("MENSAJE_SERVIDOR:Usuario registrado correctamente.");
                     enviarMensaje(usuario, "Hola " + usuario + ", tu cuenta fue creada.");
@@ -454,41 +512,86 @@ public class Servidor {
             }
         }
 
-        private void manejarVerPerfil() { 
-            salida.println(usuarioActivo != null ? "PERFIL:" + usuarioActivo : "ERROR:NO_AUTENTICADO"); 
+        private void manejarVerPerfil() {
+            salida.println(usuarioActivo != null ? "PERFIL:" + usuarioActivo : "ERROR:NO_AUTENTICADO");
         }
-        
-        private void manejarVerUsuarios() { 
+
+        private void manejarVerUsuarios() {
             if (usuarioActivo == null) {
                 salida.println("ERROR:NO_AUTENTICADO");
                 return;
             }
-            
+
             Set<String> usuariosDisponibles = new HashSet<>(usuarios.keySet());
-            usuariosDisponibles.remove(usuarioActivo); 
-            
+            usuariosDisponibles.remove(usuarioActivo);
+
             Set<String> bloqueadosPorMi = usuariosBloqueados.getOrDefault(usuarioActivo, new HashSet<>());
             usuariosDisponibles.removeAll(bloqueadosPorMi);
-            
-            salida.println("USUARIOS:" + String.join(",", usuariosDisponibles)); 
+
+            salida.println("USUARIOS:" + String.join(",", usuariosDisponibles));
         }
 
         private void manejarBandeja() throws IOException {
-            if (usuarioActivo == null) { 
-                salida.println("ERROR:NO_AUTENTICADO"); 
-                return; 
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
             }
-            
+
             List<String> mensajes = bandejas.getOrDefault(usuarioActivo, new ArrayList<>());
             if (mensajes.isEmpty()) {
                 salida.println("BANDEJA:No tienes mensajes.");
-            } else {
-                salida.println("BANDEJA_CON_INDICES");
-                for (int i = 0; i < mensajes.size(); i++) {
-                    salida.println((i + 1) + ". " + mensajes.get(i));
-                }
-                salida.println("FIN_BANDEJA");
+                return;
             }
+
+            int pagina = paginaActual.getOrDefault(usuarioActivo, 1);
+            int mensajesPorPagina = 5;
+            int totalMensajes = mensajes.size();
+            int totalPaginas = (int) Math.ceil((double) totalMensajes / mensajesPorPagina);
+
+            if (pagina < 1) pagina = 1;
+            if (pagina > totalPaginas) pagina = totalPaginas;
+            paginaActual.put(usuarioActivo, pagina);
+
+            int inicio = (pagina - 1) * mensajesPorPagina;
+            int fin = Math.min(inicio + mensajesPorPagina, totalMensajes);
+
+            salida.println("BANDEJA_PAGINADA");
+            salida.println("PAGINA:" + pagina + "/" + totalPaginas);
+
+            for (int i = inicio; i < fin; i++) {
+                salida.println((i + 1) + ". " + mensajes.get(i));
+            }
+
+            salida.println("FIN_PAGINA");
+        }
+
+        private void manejarSiguiente() throws IOException {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+            int cur = paginaActual.getOrDefault(usuarioActivo, 1);
+            paginaActual.put(usuarioActivo, cur + 1);
+            manejarBandeja();
+        }
+
+        private void manejarAnterior() throws IOException {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+            int cur = paginaActual.getOrDefault(usuarioActivo, 1);
+            paginaActual.put(usuarioActivo, cur - 1);
+            manejarBandeja();
+        }
+
+        private void manejarSalirBandeja() {
+            if (usuarioActivo == null) {
+                salida.println("ERROR:NO_AUTENTICADO");
+                return;
+            }
+            paginaActual.remove(usuarioActivo);
+            salida.println("SALISTE_BANDEJA");
         }
 
         private void manejarEliminarMensajes() throws IOException {
@@ -508,14 +611,14 @@ public class Servidor {
 
             if ("TODOS".equalsIgnoreCase(respuesta)) {
                 mensajes.clear();
-                guardarMensajesUsuario(usuarioActivo); 
+                guardarMensajesUsuario(usuarioActivo);
                 salida.println("TODOS_ELIMINADOS");
             } else {
                 try {
                     int indice = Integer.parseInt(respuesta) - 1;
                     if (indice >= 0 && indice < mensajes.size()) {
                         mensajes.remove(indice);
-                        guardarMensajesUsuario(usuarioActivo); 
+                        guardarMensajesUsuario(usuarioActivo);
                         salida.println("MENSAJE_ELIMINADO");
                     } else {
                         salida.println("INDICE_INVALIDO");
@@ -558,7 +661,7 @@ public class Servidor {
 
             Set<String> bloqueadosPorEl = usuariosBloqueados.getOrDefault(destinatario, new HashSet<>());
             if (bloqueadosPorEl.contains(usuarioActivo)) {
-                salida.println("USUARIO_TE_BLOQUEO");
+                salida.println("USUARIO_TE_BLOCO");
                 return;
             }
 
@@ -599,6 +702,11 @@ public class Servidor {
             }
 
             Set<String> bloqueados = usuariosBloqueados.get(usuarioActivo);
+            if (bloqueados == null) {
+                bloqueados = new HashSet<>();
+                usuariosBloqueados.put(usuarioActivo, bloqueados);
+            }
+
             if (bloqueados.contains(usuarioBloquear)) {
                 salida.println("USUARIO_YA_BLOQUEADO");
                 return;
@@ -624,7 +732,7 @@ public class Servidor {
             }
 
             Set<String> bloqueados = usuariosBloqueados.get(usuarioActivo);
-            if (bloqueados.remove(usuarioDesbloquear)) {
+            if (bloqueados != null && bloqueados.remove(usuarioDesbloquear)) {
                 guardarBloqueados();
                 salida.println("USUARIO_DESBLOQUEADO_EXITOSO");
             } else {
@@ -663,7 +771,7 @@ public class Servidor {
                 }
 
                 File[] archivos = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
-                
+
                 if (archivos == null || archivos.length == 0) {
                     salida.println("NO_HAY_ARCHIVOS_TXT");
                 } else {
@@ -710,7 +818,7 @@ public class Servidor {
 
             Set<String> bloqueadosPorEl = usuariosBloqueados.getOrDefault(destinatario, new HashSet<>());
             if (bloqueadosPorEl.contains(usuarioActivo)) {
-                salida.println("USUARIO_TE_BLOQUEO");
+                salida.println("USUARIO_TE_BLOCO");
                 return;
             }
 
@@ -723,21 +831,21 @@ public class Servidor {
             }
 
             try {
-                int tamaño = dataInput.readInt();              
-                if (tamaño <= 0 || tamaño > 10 * 1024 * 1024) { 
+                int tam = dataInput.readInt();
+                if (tam <= 0 || tam > 10 * 1024 * 1024) {
                     salida.println("TAMAÑO_ARCHIVO_INVALIDO");
                     return;
                 }
 
-                byte[] contenido = new byte[tamaño];
+                byte[] contenido = new byte[tam];
                 dataInput.readFully(contenido);
                 ArchivoTransferencia archivo = new ArchivoTransferencia(nombreArchivo, usuarioActivo, contenido);
                 enviarArchivo(destinatario, archivo);
-                enviarMensaje(destinatario, "[Archivo recibido de " + usuarioActivo + "]: " + nombreArchivo + 
-                            " (tamaño: " + tamaño + " bytes)");
-                
+                enviarMensaje(destinatario, "[Archivo recibido de " + usuarioActivo + "]: " + nombreArchivo +
+                        " (tamaño: " + tam + " bytes)");
+
                 salida.println("ARCHIVO_ENVIADO");
-                
+
             } catch (IOException e) {
                 salida.println("ERROR_RECIBIENDO_ARCHIVO");
                 System.err.println("Error recibiendo archivo: " + e.getMessage());
@@ -751,15 +859,15 @@ public class Servidor {
             }
 
             List<ArchivoTransferencia> archivos = archivosCompartidos.getOrDefault(usuarioActivo, new ArrayList<>());
-            
+
             if (archivos.isEmpty()) {
                 salida.println("NO_HAY_ARCHIVOS_RECIBIDOS");
             } else {
                 salida.println("ARCHIVOS_RECIBIDOS");
                 for (int i = 0; i < archivos.size(); i++) {
                     ArchivoTransferencia archivo = archivos.get(i);
-                    salida.println((i + 1) + ". " + archivo.nombre + " (de: " + archivo.remitente + 
-                                 ", tamaño: " + archivo.tamaño + " bytes)");
+                    salida.println((i + 1) + ". " + archivo.nombre + " (de: " + archivo.remitente +
+                            ", tamaño: " + archivo.tamano + " bytes)");
                 }
                 salida.println("FIN_ARCHIVOS_RECIBIDOS");
             }
@@ -772,7 +880,7 @@ public class Servidor {
             }
 
             List<ArchivoTransferencia> archivos = archivosCompartidos.getOrDefault(usuarioActivo, new ArrayList<>());
-            
+
             if (archivos.isEmpty()) {
                 salida.println("NO_HAY_ARCHIVOS_PARA_DESCARGAR");
                 return;
@@ -783,24 +891,24 @@ public class Servidor {
 
             try {
                 int indice = Integer.parseInt(indiceStr) - 1;
-                
+
                 if (indice < 0 || indice >= archivos.size()) {
                     salida.println("INDICE_ARCHIVO_INVALIDO");
                     return;
                 }
 
                 ArchivoTransferencia archivo = archivos.get(indice);
-                
+
                 salida.println("ARCHIVO_DISPONIBLE");
                 salida.println(archivo.nombre);
-                salida.println(String.valueOf(archivo.tamaño));
-                
-                dataOutput.writeInt(archivo.contenido.length);
+                salida.println(String.valueOf(archivo.tamano));
+
+                dataOutput.writeInt((int) archivo.contenido.length);
                 dataOutput.write(archivo.contenido);
                 dataOutput.flush();
-                
+
                 System.out.println("Archivo " + archivo.nombre + " enviado a " + usuarioActivo);
-                
+
             } catch (NumberFormatException e) {
                 salida.println("INDICE_FORMATO_INVALIDO");
             } catch (IOException e) {
@@ -809,9 +917,9 @@ public class Servidor {
             }
         }
 
-        private void manejarLogout() { 
-            usuarioActivo = null; 
-            salida.println("LOGOUT_EXITOSO"); 
+        private void manejarLogout() {
+            usuarioActivo = null;
+            salida.println("LOGOUT_EXITOSO");
         }
 
         private void jugarAdivinaNumero() throws IOException {
@@ -823,7 +931,7 @@ public class Servidor {
             int numeroSecreto = random.nextInt(10) + 1;
             int intentos = 0;
             boolean acertado = false;
-            
+
             salida.println("=== JUEGO: ADIVINA EL NUMERO ===");
             salida.println("Adivina el numero del 1 al 10. Tienes 3 intentos.");
 
@@ -832,11 +940,11 @@ public class Servidor {
                 if (entradaCliente == null) break;
 
                 int intento;
-                try { 
-                    intento = Integer.parseInt(entradaCliente.trim()); 
-                } catch (NumberFormatException e) { 
+                try {
+                    intento = Integer.parseInt(entradaCliente.trim());
+                } catch (NumberFormatException e) {
                     salida.println("Eso no es un numero valido. Intenta de nuevo (no cuenta como intento).");
-                    continue; 
+                    continue;
                 }
 
                 if (intento < 1 || intento > 10) {
@@ -845,10 +953,10 @@ public class Servidor {
                 }
 
                 intentos++;
-                
-                if (intento == numeroSecreto) { 
-                    salida.println("¡Correcto! Adivinaste el numero en " + intentos + " intento(s)."); 
-                    acertado = true; 
+
+                if (intento == numeroSecreto) {
+                    salida.println("¡Correcto! Adivinaste el numero en " + intentos + " intento(s).");
+                    acertado = true;
                 } else {
                     if (intentos < 3) {
                         if (intento < numeroSecreto) {
@@ -863,7 +971,7 @@ public class Servidor {
             if (!acertado) {
                 salida.println("No lograste adivinar el numero. Era: " + numeroSecreto);
             }
-            
+
             salida.println("Fin del juego.");
         }
     }
